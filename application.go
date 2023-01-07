@@ -14,6 +14,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	fmt.Println("test server activated")
 	http.HandleFunc("/", handler)
 	http.ListenAndServe(":5000", nil)
 }
