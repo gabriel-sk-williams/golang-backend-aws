@@ -1,0 +1,22 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name":   "gabrielskwilliams/riverboat:1",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": "5000"
+    }
+  ],
+  "environment": [
+    {
+      "name":  "ENVIRONMENT",
+      "value": "production"
+    },
+    {
+      "name":  "PORT",
+      "value": "5000"
+    }
+  ]
+}
