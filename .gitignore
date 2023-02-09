@@ -19,4 +19,10 @@
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
 
+.ebextensions/
+.platform/
+bin/
+
 go.zip
+config.json
+.env
