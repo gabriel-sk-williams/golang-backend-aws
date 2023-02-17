@@ -18,16 +18,16 @@ func main() {
 
 	var uri, user, pw string
 
-	if os.Getenv("APP_ENV") == "local" {
-		fmt.Printf("Production environment: local \n")
-		uri = "DB_URI"
-		user = "DB_USERNAME"
-		pw = "DB_PASSWORD"
-	} else {
+	if os.Getenv("APP_ENV") == "production" {
 		fmt.Printf("Production environment: production \n")
 		uri = "AURA_URI"
 		user = "AURA_USERNAME"
 		pw = "AURA_PASSWORD"
+	} else {
+		fmt.Printf("Production environment: development \n")
+		uri = "DB_URI"
+		user = "DB_USERNAME"
+		pw = "DB_PASSWORD"
 	}
 
 	dbUri, found := os.LookupEnv(uri)
@@ -52,12 +52,20 @@ func main() {
 		DB: &neoDriver,
 	}
 
-	// submitModel()
+	// SubmitModel()
 	var (
-		JSONRequest = validation.RuleSet{
+		SubmitRequest = validation.RuleSet{
 			"player": validation.List{"required", "string"},
 			"space":  validation.List{"required", "string"},
 			"model":  validation.List{"required", "object"},
+		}
+	)
+
+	// GetTable()
+	var (
+		TableRequest = validation.RuleSet{
+			"cuuid": validation.List{"required", "string"},
+			"suuid": validation.List{"required", "string"},
 		}
 	)
 
@@ -70,8 +78,9 @@ func main() {
 		router.Get("/joined/{cuuid}", handler.ListJoined)
 		router.Get("/models/{suuid}", handler.ListModels)
 		router.Get("/payouts/{suuid}", handler.ListPayouts)
+		router.Get("/table", handler.GetTable).Validate(TableRequest)
 		router.Post("/join", handler.Join)
-		router.Post("/submit", handler.SubmitModel).Validate(JSONRequest)
+		router.Post("/submit", handler.SubmitModel).Validate(SubmitRequest)
 	}); err != nil {
 		os.Exit(err.(*goyave.Error).ExitCode)
 	}

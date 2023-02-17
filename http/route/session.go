@@ -6,6 +6,23 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
+/*
+	[
+		{"Yakub": {WinByMethod} },
+		{"Nigel": {WinByMethod} },
+		{"Damien": {WinByMethod} },
+	]
+*/
+
+/*
+	type Entry struct {
+		Entry map[string]WinByMethod `json:"model"`
+	}
+*/
+
+type Entry struct {
+}
+
 type Player struct {
 	Name  string  `json:"name"`
 	Uuid  string  `json:"uuid"`
@@ -70,7 +87,7 @@ func (env Env) listJoined(circle string) ([]Player, error) {
 func (env Env) listModels(space string) (map[string]WinByMethod, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
-
+	//fmt.Println("list models:", space)
 	people, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 
 		result, err := tx.Run(`
@@ -101,6 +118,77 @@ func (env Env) listModels(space string) (map[string]WinByMethod, error) {
 					modelMap[name.(string)] = wbm
 				}
 			}
+		}
+
+		if err = result.Err(); err != nil {
+			return nil, err
+		}
+
+		return modelMap, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return people.(map[string]WinByMethod), nil
+}
+
+func (env Env) getTable(circle string, space string) (map[string]WinByMethod, error) {
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+
+	people, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+
+		result, err := tx.Run(`
+			MATCH (joined:Player)-->(c:Circle {uuid: $cuuid})
+			MATCH (player:Player)-->(model:Model)-->(s:Space {uuid: $suuid})
+			RETURN joined, player, model
+			`, map[string]interface{}{"cuuid": circle, "suuid": space})
+
+		if err != nil {
+			return nil, err
+		}
+
+		/*
+			var joined []Player
+			for result.Next() {
+				record := result.Record()
+				if value, ok := record.Get("player"); ok {
+					node := value.(neo4j.Node)
+					props := node.Props
+					player := Player{
+						Name:  props["name"].(string),
+						Uuid:  props["uuid"].(string),
+						Money: props["money"].(float64),
+						Risk:  props["risk"].(int64),
+					}
+					joined = append(joined, player)
+				}
+			}
+		*/
+
+		var modelMap = make(map[string]WinByMethod)
+		for result.Next() {
+			record := result.Record()
+			//if reccos, ok : = record.get("joined"); ok {
+			if value, ok := record.Get("player"); ok {
+				node := value.(neo4j.Node)
+				name := node.Props["name"]
+				if val, err := record.Get("model"); err {
+					modelNode := val.(neo4j.Node)
+					props := modelNode.Props
+					wbm := WinByMethod{
+						AByDec: props["a_by_dec"].(float64),
+						AByKO:  props["a_by_ko"].(float64),
+						BByDec: props["b_by_dec"].(float64),
+						BByKO:  props["b_by_ko"].(float64),
+						DrawNC: props["draw_nc"].(float64),
+					}
+					modelMap[name.(string)] = wbm
+				}
+			}
+			//}
 		}
 
 		if err = result.Err(); err != nil {

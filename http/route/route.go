@@ -21,6 +21,7 @@ type Controls interface {
 	listJoined(circle string) ([]Player, error)
 	listModels(space string) (map[string]WinByMethod, error)
 	listPayouts(space string) (map[string]WinByMethod, error)
+	getTable(circle string, space string) (map[string]WinByMethod, error)
 	submitModel(player string, space string, json Model) (string, error)
 }
 
@@ -54,6 +55,7 @@ type Submission struct {
 
 func (h Handler) ListJoined(response *goyave.Response, r *goyave.Request) {
 	joined, err := h.DB.listJoined(r.Params["cuuid"])
+	//fmt.Println("joined:", joined)
 	if err == nil {
 		response.JSON(http.StatusOK, joined)
 	}
@@ -61,6 +63,7 @@ func (h Handler) ListJoined(response *goyave.Response, r *goyave.Request) {
 
 func (h Handler) ListModels(response *goyave.Response, r *goyave.Request) {
 	models, err := h.DB.listModels(r.Params["suuid"])
+	//fmt.Println("models:", models)
 	if err == nil {
 		response.JSON(http.StatusOK, models)
 	}
@@ -68,8 +71,20 @@ func (h Handler) ListModels(response *goyave.Response, r *goyave.Request) {
 
 func (h Handler) ListPayouts(response *goyave.Response, r *goyave.Request) {
 	payouts, err := h.DB.listPayouts(r.Params["suuid"])
+	//fmt.Println("payouts:", payouts)
 	if err == nil {
 		response.JSON(http.StatusOK, payouts)
+	}
+}
+
+func (h Handler) GetTable(response *goyave.Response, r *goyave.Request) {
+	cuuid := r.String("cuuid")
+	suuid := r.String("suuid")
+
+	table, err := h.DB.getTable(cuuid, suuid)
+	fmt.Println(table)
+	if err == nil {
+		response.JSON(http.StatusOK, table)
 	}
 }
 
