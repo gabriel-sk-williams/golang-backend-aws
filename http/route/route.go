@@ -35,9 +35,7 @@ type Controls interface {
 }
 
 func (h Handler) GetSpace(response *goyave.Response, r *goyave.Request) {
-
 	space, err := h.DB.getSpace(r.Params["suuid"])
-
 	if err == nil {
 		response.JSON(http.StatusOK, space)
 	}
@@ -45,7 +43,6 @@ func (h Handler) GetSpace(response *goyave.Response, r *goyave.Request) {
 
 func (h Handler) ListJoined(response *goyave.Response, r *goyave.Request) {
 	joined, err := h.DB.listJoined(r.Params["cuuid"])
-	//fmt.Println("joined:", joined)
 	if err == nil {
 		response.JSON(http.StatusOK, joined)
 	}
@@ -53,7 +50,6 @@ func (h Handler) ListJoined(response *goyave.Response, r *goyave.Request) {
 
 func (h Handler) ListModels(response *goyave.Response, r *goyave.Request) {
 	models, err := h.DB.listModels(r.Params["suuid"]) // joined/suuid
-	//fmt.Println("models:", models)
 	if err == nil {
 		response.JSON(http.StatusOK, models)
 	}
@@ -61,7 +57,6 @@ func (h Handler) ListModels(response *goyave.Response, r *goyave.Request) {
 
 func (h Handler) ListPayouts(response *goyave.Response, r *goyave.Request) {
 	payouts, err := h.DB.listPayouts(r.Params["suuid"])
-	//fmt.Println("payouts:", payouts)
 	if err == nil {
 		response.JSON(http.StatusOK, payouts)
 	}
@@ -78,25 +73,14 @@ func (h Handler) CalculatePayouts(response *goyave.Response, r *goyave.Request) 
 
 	models, _ := h.DB.mapModels(suuid)
 	payouts, _ := calc.Payouts(models, fields, stake)
-	result, _ := h.DB.postPayouts(suuid, query, payouts)
+	result, err := h.DB.postPayouts(suuid, query, payouts)
 
-	/*
-		fmt.Println(reflect.TypeOf(payouts))
-
-		for name, payout := range payouts {
-			fmt.Println(name, payout)
-			//let payout = models::WinByMethod::new_payout(map.clone());
-			//let _posted = models::wbm::post_payout(String::from(name), uuid.clone(), payout, graph);
-		}
-	*/
-
-	//if err == nil {
-	//response.JSON(http.StatusOK, payouts)
-	response.String(http.StatusOK, result)
-	//}
+	if err == nil {
+		response.String(http.StatusOK, result)
+	}
 }
 
-// need suuid and model
+// receives Submission
 func (h Handler) SubmitModel(response *goyave.Response, r *goyave.Request) {
 	puuid := r.String("puuid")
 	suuid := r.String("suuid")
@@ -119,8 +103,6 @@ func (h Handler) SubmitModel(response *goyave.Response, r *goyave.Request) {
 	}
 }
 
-// axios post with NameCircle { name, cuuid }
-// axios.post(urlToggle, NameCircle, { headers: defaultHeader })
 func (h Handler) Join(response *goyave.Response, r *goyave.Request) {
 	puuid := r.String("puuid")
 	cuuid := r.String("cuuid")
@@ -134,6 +116,7 @@ func (h Handler) Join(response *goyave.Response, r *goyave.Request) {
 	}
 }
 
+// receives PlayerCircle
 func (h Handler) Leave(response *goyave.Response, r *goyave.Request) {
 	puuid := r.String("puuid")
 	cuuid := r.String("cuuid")
@@ -147,6 +130,7 @@ func (h Handler) Leave(response *goyave.Response, r *goyave.Request) {
 	}
 }
 
+// receives Circle
 func (h Handler) AddRandom(response *goyave.Response, r *goyave.Request) {
 	cuuid := r.String("cuuid")
 
@@ -159,6 +143,7 @@ func (h Handler) AddRandom(response *goyave.Response, r *goyave.Request) {
 	}
 }
 
+// receives PlayerSpace
 func (h Handler) DeleteModel(response *goyave.Response, r *goyave.Request) {
 	puuid := r.String("puuid")
 	suuid := r.String("suuid")

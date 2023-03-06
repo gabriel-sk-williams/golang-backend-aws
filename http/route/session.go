@@ -237,8 +237,6 @@ func (env Env) submitModel(puuid string, suuid string, json model.WinByMethod) (
 	return "model submitted", nil
 }
 
-// json mode.WinByMethod
-// runs calcs with puuid instead of name
 func (env Env) postPayouts(
 	suuid string,
 	query string,
@@ -248,27 +246,16 @@ func (env Env) postPayouts(
 	defer session.Close()
 
 	for name, payout := range payouts {
-		newp := map[string]interface{}{
+		pomap := map[string]interface{}{
 			"name":  name,
 			"suuid": suuid,
 		}
 		for val, float := range payout {
-			newp[val] = float
+			pomap[val] = float
 		}
 
 		records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-			result, err := tx.Run(`
-				MATCH (player:Player {name: $name})-->(circle)-->(space:Space {uuid: $suuid})
-				WITH player, space
-				MERGE (space)-[:SETS]->(payout:Payout)-[:FOR]->(player) SET payout = {
-					a_by_dec: $a_by_dec,
-					a_by_ko: $a_by_ko,
-					b_by_dec: $b_by_dec,
-					b_by_ko: $b_by_ko,
-					draw_nc: $draw_nc
-				}
-				RETURN payout
-				`, newp)
+			result, err := tx.Run(query, pomap)
 
 			if err != nil {
 				return nil, err
@@ -286,40 +273,6 @@ func (env Env) postPayouts(
 
 	return "payouts posted", nil
 }
-
-/*
-#[tokio::main]
-pub async fn post_payout(name: String, suuid: String,
-                         payout: WinByMethod, graph: &Graph)
-                         -> tide::Result<()> {
-
-    let WinByMethod { a_by_dec, a_by_ko, b_by_dec, b_by_ko, draw_nc } = payout;
-
-    graph.run(
-        Query::new("
-            MATCH (player:Player {name: $name})-->(circle)-->(space:Space {uuid: $suuid})
-            WITH player, space
-            MERGE (space)-[:SETS]->(payout:Payout)-[:FOR]->(player) SET payout = {
-                a_by_dec: $adec,
-                a_by_ko: $ako,
-                b_by_dec: $bdec,
-                b_by_ko: $bko,
-                draw_nc: $draw
-            }
-            RETURN payout
-        ")
-        .param("name", name)
-        .param("suuid", suuid)
-        .param("adec", a_by_dec)
-        .param("ako", a_by_ko)
-        .param("bdec", b_by_dec)
-        .param("bko", b_by_ko)
-        .param("draw", draw_nc)
-        ).await.unwrap();
-
-    Ok(())
-}
-*/
 
 func (env Env) addRandom(cuuid string) (string, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
@@ -446,3 +399,37 @@ func (env Env) deleteModel(puuid string, suuid string) (string, error) {
 
 	return "model deleted", nil
 }
+
+/*
+func addPersonsAsEmployees(ctx context.Context, driver neo4j.DriverWithContext, companyName string) (int, error) {
+	session := driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	results, err := session.Run(ctx, "MATCH (a:Person) RETURN a.name AS name", nil)
+	persons, err := neo4j.CollectWithContext(ctx, results, err)
+	if err != nil {
+		return 0, err
+	}
+
+	employees := 0
+	for _, person := range persons {
+		_, err = session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+			var result, err = tx.Run(ctx, "MATCH (emp:Person {name: $person_name}) "+
+				"MERGE (com:Company {name: $company_name}) "+
+				"MERGE (emp)-[:WORKS_FOR]->(com)", map[string]any{"person_name": person.Values[0], "company_name": companyName})
+			if err != nil {
+				return nil, err
+			}
+
+			return result.Consume(ctx)
+		})
+		if err != nil {
+			return 0, err
+		}
+
+		employees++
+	}
+
+	return employees, nil
+}
+*/

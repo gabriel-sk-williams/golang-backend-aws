@@ -1,6 +1,7 @@
 package calc
 
 import (
+	"fmt"
 	"math"
 	"sort"
 )
@@ -125,6 +126,7 @@ func payoutMap(oca []Pair, stake float64) map[string][]float64 {
 		consecutive := getConsecutive(oca)
 		trust := oca[0:consecutive] // copy consecutive elements
 		oca = oca[consecutive:]     // remove consecutive
+		fmt.Println(trust, oca)
 		if len(oca) == 0 {
 			break
 		}
