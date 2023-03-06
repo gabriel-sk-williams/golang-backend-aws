@@ -54,18 +54,39 @@ func main() {
 
 	// SubmitModel()
 	var (
-		SubmitRequest = validation.RuleSet{
-			"player": validation.List{"required", "string"},
-			"space":  validation.List{"required", "string"},
-			"model":  validation.List{"required", "object"},
+		Submission = validation.RuleSet{
+			"puuid": validation.List{"required", "string"},
+			"suuid": validation.List{"required", "string"},
+			"model": validation.List{"required", "object"},
 		}
 	)
 
-	// GetTable()
 	var (
-		TableRequest = validation.RuleSet{
+		PlayerCircle = validation.RuleSet{
+			"puuid": validation.List{"required", "string"},
 			"cuuid": validation.List{"required", "string"},
+		}
+	)
+
+	var (
+		PlayerSpace = validation.RuleSet{
+			"puuid": validation.List{"required", "string"},
 			"suuid": validation.List{"required", "string"},
+		}
+	)
+
+	var (
+		Circle = validation.RuleSet{
+			"cuuid": validation.List{"required", "string"},
+		}
+	)
+
+	var (
+		Space = validation.RuleSet{
+			"uuid":    validation.List{"required", "string"},
+			"fields":  validation.List{"required", "array:string"},
+			"pattern": validation.List{"required", "string"},
+			"stake":   validation.List{"required", "numeric"},
 		}
 	)
 
@@ -77,10 +98,16 @@ func main() {
 		router.Get("/", route.Test)
 		router.Get("/joined/{cuuid}", handler.ListJoined)
 		router.Get("/models/{suuid}", handler.ListModels)
+		router.Get("/space/{suuid}", handler.GetSpace)
 		router.Get("/payouts/{suuid}", handler.ListPayouts)
-		router.Get("/table", handler.GetTable).Validate(TableRequest)
+		router.Post("/greeting", handler.Greeting)
 		router.Post("/join", handler.Join)
-		router.Post("/submit", handler.SubmitModel).Validate(SubmitRequest)
+		router.Post("/leave", handler.Leave).Validate(PlayerCircle)
+		router.Post("/add_random", handler.AddRandom).Validate(Circle)
+		router.Post("/submit", handler.SubmitModel).Validate(Submission)
+		router.Post("/delete_model", handler.DeleteModel).Validate(PlayerSpace)
+		router.Post("/calc", handler.CalculatePayouts).Validate(Space)
+
 	}); err != nil {
 		os.Exit(err.(*goyave.Error).ExitCode)
 	}

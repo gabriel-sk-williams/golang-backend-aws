@@ -2,65 +2,74 @@ package route
 
 import (
 	"fmt"
+	"riverboat/model"
+	"riverboat/util"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 /*
-	[
-		{"Yakub": {WinByMethod} },
-		{"Nigel": {WinByMethod} },
-		{"Damien": {WinByMethod} },
-	]
+The methods ExecuteRead and ExecuteWrite have replaced ReadTransaction and WriteTransaction, which are deprecated in version 5.x and will be removed in version 6.0.
 */
 
-/*
-	type Entry struct {
-		Entry map[string]WinByMethod `json:"model"`
-	}
-*/
-
-type Entry struct {
-}
-
-type Player struct {
-	Name  string  `json:"name"`
-	Uuid  string  `json:"uuid"`
-	Money float64 `json:"money"`
-	Risk  int64   `json:"risk"`
-}
-
-type WinByMethod struct {
-	AByDec float64 `json:"a_by_dec"`
-	AByKO  float64 `json:"a_by_ko"`
-	BByDec float64 `json:"b_by_dec"`
-	BByKO  float64 `json:"b_by_ko"`
-	DrawNC float64 `json:"draw_nc"`
-}
-
-// returns array of players
-func (env Env) listJoined(circle string) ([]Player, error) {
+func (env Env) getSpace(suuid string) (model.Space, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
-	people, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-
+	records, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(`
-				MATCH (player:Player)-[:JOINED]->(c:Circle {uuid: $uuid})
-				RETURN player
-				`, map[string]interface{}{"uuid": circle})
+			MATCH (space:Space {uuid: $suuid}) 
+			RETURN space
+		`, map[string]interface{}{"suuid": suuid})
 
 		if err != nil {
 			return nil, err
 		}
 
-		var joined []Player
+		var space model.Space
+		if result.Next() {
+			record := result.Record()
+			if value, ok := record.Get("space"); ok {
+				node := value.(neo4j.Node)
+				props := node.Props
+				fields := props["fields"].([]interface{})
+				object := model.Space{
+					Fields:  util.AssertArray(fields),
+					Pattern: props["pattern"].(string),
+					Stake:   props["stake"].(float64),
+					Uuid:    props["uuid"].(string),
+				}
+				space = object
+			}
+		}
+		return space, err
+	})
+
+	return records.(model.Space), err
+}
+
+// returns array of players
+func (env Env) listJoined(cuuid string) ([]model.Player, error) {
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+
+	people, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(`
+			MATCH (player:Player)-[:JOINED]->(c:Circle {uuid: $cuuid})
+			RETURN player
+			`, map[string]interface{}{"cuuid": cuuid})
+
+		if err != nil {
+			return nil, err
+		}
+
+		var joined []model.Player
 		for result.Next() {
 			record := result.Record()
 			if value, ok := record.Get("player"); ok {
 				node := value.(neo4j.Node)
 				props := node.Props
-				player := Player{
+				player := model.Player{
 					Name:  props["name"].(string),
 					Uuid:  props["uuid"].(string),
 					Money: props["money"].(float64),
@@ -81,104 +90,33 @@ func (env Env) listJoined(circle string) ([]Player, error) {
 		return nil, err
 	}
 
-	return people.([]Player), nil
+	return people.([]model.Player), nil
 }
 
-func (env Env) listModels(space string) (map[string]WinByMethod, error) {
-	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close()
-	//fmt.Println("list models:", space)
-	people, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-
-		result, err := tx.Run(`
-			MATCH (player:Player)-->(model:Model)-->(s:Space {uuid: $uuid})
-			RETURN player, model
-			`, map[string]interface{}{"uuid": space})
-
-		if err != nil {
-			return nil, err
-		}
-
-		var modelMap = make(map[string]WinByMethod)
-		for result.Next() {
-			record := result.Record()
-			if value, ok := record.Get("player"); ok {
-				node := value.(neo4j.Node)
-				name := node.Props["name"]
-				if val, err := record.Get("model"); err {
-					modelNode := val.(neo4j.Node)
-					props := modelNode.Props
-					wbm := WinByMethod{
-						AByDec: props["a_by_dec"].(float64),
-						AByKO:  props["a_by_ko"].(float64),
-						BByDec: props["b_by_dec"].(float64),
-						BByKO:  props["b_by_ko"].(float64),
-						DrawNC: props["draw_nc"].(float64),
-					}
-					modelMap[name.(string)] = wbm
-				}
-			}
-		}
-
-		if err = result.Err(); err != nil {
-			return nil, err
-		}
-
-		return modelMap, nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return people.(map[string]WinByMethod), nil
-}
-
-func (env Env) getTable(circle string, space string) (map[string]WinByMethod, error) {
+func (env Env) listModels(suuid string) (map[string]model.WinByMethod, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
 	people, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-
 		result, err := tx.Run(`
-			MATCH (joined:Player)-->(c:Circle {uuid: $cuuid})
 			MATCH (player:Player)-->(model:Model)-->(s:Space {uuid: $suuid})
-			RETURN joined, player, model
-			`, map[string]interface{}{"cuuid": circle, "suuid": space})
+			RETURN player, model
+			`, map[string]interface{}{"suuid": suuid})
 
 		if err != nil {
 			return nil, err
 		}
 
-		/*
-			var joined []Player
-			for result.Next() {
-				record := result.Record()
-				if value, ok := record.Get("player"); ok {
-					node := value.(neo4j.Node)
-					props := node.Props
-					player := Player{
-						Name:  props["name"].(string),
-						Uuid:  props["uuid"].(string),
-						Money: props["money"].(float64),
-						Risk:  props["risk"].(int64),
-					}
-					joined = append(joined, player)
-				}
-			}
-		*/
-
-		var modelMap = make(map[string]WinByMethod)
+		var modelMap = make(map[string]model.WinByMethod)
 		for result.Next() {
 			record := result.Record()
-			//if reccos, ok : = record.get("joined"); ok {
 			if value, ok := record.Get("player"); ok {
 				node := value.(neo4j.Node)
 				name := node.Props["name"]
 				if val, err := record.Get("model"); err {
 					modelNode := val.(neo4j.Node)
 					props := modelNode.Props
-					wbm := WinByMethod{
+					wbm := model.WinByMethod{
 						AByDec: props["a_by_dec"].(float64),
 						AByKO:  props["a_by_ko"].(float64),
 						BByDec: props["b_by_dec"].(float64),
@@ -188,7 +126,6 @@ func (env Env) getTable(circle string, space string) (map[string]WinByMethod, er
 					modelMap[name.(string)] = wbm
 				}
 			}
-			//}
 		}
 
 		if err = result.Err(); err != nil {
@@ -202,25 +139,24 @@ func (env Env) getTable(circle string, space string) (map[string]WinByMethod, er
 		return nil, err
 	}
 
-	return people.(map[string]WinByMethod), nil
+	return people.(map[string]model.WinByMethod), nil
 }
 
-func (env Env) listPayouts(space string) (map[string]WinByMethod, error) {
+func (env Env) listPayouts(suuid string) (map[string]model.WinByMethod, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
 	payouts, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-
 		result, err := tx.Run(`
-			MATCH (player:Player)<--(payout:Payout)<--(s:Space {uuid: $uuid})
+			MATCH (player:Player)<--(payout:Payout)<--(s:Space {uuid: $suuid})
 			RETURN player, payout
-			`, map[string]interface{}{"uuid": space})
+			`, map[string]interface{}{"suuid": suuid})
 
 		if err != nil {
 			return nil, err
 		}
 
-		var payoutMap = make(map[string]WinByMethod)
+		var payoutMap = make(map[string]model.WinByMethod)
 		for result.Next() {
 			record := result.Record()
 			if value, ok := record.Get("player"); ok {
@@ -229,7 +165,7 @@ func (env Env) listPayouts(space string) (map[string]WinByMethod, error) {
 				if val, err := record.Get("payout"); err {
 					modelNode := val.(neo4j.Node)
 					props := modelNode.Props
-					wbm := WinByMethod{
+					wbm := model.WinByMethod{
 						AByDec: props["a_by_dec"].(float64),
 						AByKO:  props["a_by_ko"].(float64),
 						BByDec: props["b_by_dec"].(float64),
@@ -252,17 +188,16 @@ func (env Env) listPayouts(space string) (map[string]WinByMethod, error) {
 		return nil, err
 	}
 
-	return payouts.(map[string]WinByMethod), nil
+	return payouts.(map[string]model.WinByMethod), nil
 }
 
-func (env Env) submitModel(name string, suuid string, json Model) (string, error) {
+func (env Env) submitModel(puuid string, suuid string, json model.WinByMethod) (string, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
 	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-
 		result, err := tx.Run(`
-			MATCH (player:Player {name: $name})-->(circle)-->(space:Space {uuid: $suuid})
+			MATCH (player:Player {uuid: $puuid})-->(circle)-->(space:Space {uuid: $suuid})
 			WITH player, space
 			MERGE (player)-[:SETS]->(model:Model)-[:FOR]->(space) SET model = {
 				a_by_dec: $adec,
@@ -273,7 +208,7 @@ func (env Env) submitModel(name string, suuid string, json Model) (string, error
 			}
 			RETURN model
 			`, map[string]interface{}{
-			"name":  name,
+			"puuid": puuid,
 			"suuid": suuid,
 			"adec":  json.AByDec,
 			"ako":   json.AByKO,
@@ -293,42 +228,85 @@ func (env Env) submitModel(name string, suuid string, json Model) (string, error
 		panic(err)
 	}
 
+	// gives use for records
 	for _, record := range records.([]*neo4j.Record) {
 		temp := record.Values[0].(neo4j.Node)
-		fmt.Println(temp)
+		fmt.Println("submit:", temp)
 	}
 
-	//fmt.Println("session", records)
-	return "test text", nil
+	return "model submitted", nil
+}
+
+// json mode.WinByMethod
+// runs calcs with puuid instead of name
+func (env Env) postPayouts(
+	suuid string,
+	query string,
+	payouts map[string]map[string]float64) (string, error) {
+
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+
+	for name, payout := range payouts {
+		newp := map[string]interface{}{
+			"name":  name,
+			"suuid": suuid,
+		}
+		for val, float := range payout {
+			newp[val] = float
+		}
+
+		records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+			result, err := tx.Run(`
+				MATCH (player:Player {name: $name})-->(circle)-->(space:Space {uuid: $suuid})
+				WITH player, space
+				MERGE (space)-[:SETS]->(payout:Payout)-[:FOR]->(player) SET payout = {
+					a_by_dec: $a_by_dec,
+					a_by_ko: $a_by_ko,
+					b_by_dec: $b_by_dec,
+					b_by_ko: $b_by_ko,
+					draw_nc: $draw_nc
+				}
+				RETURN payout
+				`, newp)
+
+			if err != nil {
+				return nil, err
+			}
+
+			return result.Collect() // Collects and commits
+		})
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(records)
+	}
+
+	return "payouts posted", nil
 }
 
 /*
-a_by_dec: $adec,
-a_by_ko: $ako,
-b_by_dec: $bdec,
-b_by_ko: $bko,
-draw_nc: $draw
-*/
+#[tokio::main]
+pub async fn post_payout(name: String, suuid: String,
+                         payout: WinByMethod, graph: &Graph)
+                         -> tide::Result<()> {
 
-/*
-pub async fn post_model(name: String, suuid: String,
-                        model: WinByMethod, graph: &Graph)
-                        -> tide::Result<()> {
-
-    let WinByMethod { a_by_dec, a_by_ko, b_by_dec, b_by_ko, draw_nc } = model;
+    let WinByMethod { a_by_dec, a_by_ko, b_by_dec, b_by_ko, draw_nc } = payout;
 
     graph.run(
         Query::new("
             MATCH (player:Player {name: $name})-->(circle)-->(space:Space {uuid: $suuid})
             WITH player, space
-            MERGE (player)-[:SETS]->(model:Model)-[:FOR]->(space) SET model = {
+            MERGE (space)-[:SETS]->(payout:Payout)-[:FOR]->(player) SET payout = {
                 a_by_dec: $adec,
                 a_by_ko: $ako,
                 b_by_dec: $bdec,
                 b_by_ko: $bko,
                 draw_nc: $draw
             }
-            RETURN model
+            RETURN payout
         ")
         .param("name", name)
         .param("suuid", suuid)
@@ -343,69 +321,128 @@ pub async fn post_model(name: String, suuid: String,
 }
 */
 
-func Write() {
-	/*
-		records, err := session.WriteTransaction(
-			func(tx neo4j.Transaction) (interface{}, error) {
-				createRelationshipBetweenPeopleQuery := `
-					MERGE (p1:Person { name: $person1_name })
-					MERGE (p2:Person { name: $person2_name })
-					MERGE (p1)-[:KNOWS]->(p2)
-					RETURN p1, p2`
-				result, err := tx.Run(createRelationshipBetweenPeopleQuery, map[string]interface{}{
-					"person1_name": "Alice",
-					"person2_name": "David",
-				})
-				if err != nil {
-					return nil, err
-				}
+func (env Env) addRandom(cuuid string) (string, error) {
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
 
-				return result.Collect() // Collects and commits
-			})
+	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(`
+			MATCH (c:Circle {uuid: $cuuid}) WITH c
+			MATCH (p:Player) WHERE NOT (p)-[:JOINED]->(c) 
+			WITH c, p, rand() as r ORDER BY r LIMIT 1
+			MERGE (p)-[:JOINED]->(c)
+			RETURN p
+		`, map[string]interface{}{"cuuid": cuuid})
 
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
-		for _, record := range records.([]*neo4j.Record) {
-			firstPerson := record.Values[0].(neo4j.Node)
-			fmt.Printf("First: '%s'\n", firstPerson.Props["name"].(string))
-			secondPerson := record.Values[1].(neo4j.Node)
-			fmt.Printf("Second: '%s'\n", secondPerson.Props["name"].(string))
-		}
-	*/
+		return result.Collect() // Collects and commits
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	// gives use for records
+	for _, record := range records.([]*neo4j.Record) {
+		temp := record.Values[0].(neo4j.Node)
+		fmt.Println("random:", temp)
+	}
+
+	return "random added", nil
 }
 
-func Read() {
-	/*
-		// Now read the created persons. By using ReadTransaction method a connection
-		// to a read replica can be used which reduces load on writer nodes in cluster.
-		_, err = session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-			// Code within this function might be invoked more than once in case of
-			// transient errors.
-			readPersonByName := `
-				MATCH (p:Person)
-				WHERE p.name = $person_name
-				RETURN p.name AS name`
-			result, err := tx.Run(readPersonByName, map[string]interface{}{
-				"person_name": "Alice",
-			})
-			if err != nil {
-				return nil, err
-			}
-			// Iterate over the result within the transaction instead of using
-			// Collect (just to show how it looks...). Result.Next returns true
-			// while a record could be retrieved, in case of error result.Err()
-			// will return the error.
-			for result.Next() {
-				fmt.Printf("Person name: '%s' \n", result.Record().Values[0].(string))
-			}
-			// Again, return any error back to driver to indicate rollback and
-			// retry in case of transient error.
-			return nil, result.Err()
-		})
+func (env Env) join(puuid string, cuuid string) (string, error) {
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+
+	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(`
+			MATCH (p:Player {uuid: $puuid})
+			WITH p MATCH (c:Circle {uuid: $cuuid})
+			MERGE (p)-[:JOINED]->(c)
+			RETURN p
+		`, map[string]interface{}{"puuid": puuid, "cuuid": cuuid})
+
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-	*/
+
+		return result.Collect() // Collects and commits
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	// gives use for records
+	for _, record := range records.([]*neo4j.Record) {
+		temp := record.Values[0].(neo4j.Node)
+		fmt.Println("join", temp)
+	}
+
+	return "joined", nil
+}
+
+func (env Env) leave(puuid string, cuuid string) (string, error) {
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+
+	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(`
+			MATCH (p:Player {uuid: $puuid})-[r:JOINED]->(c:Circle {uuid: $cuuid})
+			DELETE r
+		`, map[string]interface{}{"puuid": puuid, "cuuid": cuuid})
+
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Collect() // Collects and commits
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	// gives use for records
+	for _, record := range records.([]*neo4j.Record) {
+		temp := record.Values[0].(neo4j.Node)
+		fmt.Println("leave", temp)
+	}
+
+	return "left", nil
+}
+
+func (env Env) deleteModel(puuid string, suuid string) (string, error) {
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+
+	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(`
+			MATCH (p:Player {uuid: $puuid})--(n)--(s:Space {uuid: $suuid})
+			WHERE n:Model OR n:Payout
+			DETACH DELETE n
+		`, map[string]interface{}{"puuid": puuid, "suuid": suuid})
+
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Collect() // Collects and commits
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	// gives use for records
+	for _, record := range records.([]*neo4j.Record) {
+		temp := record.Values[0].(neo4j.Node)
+		fmt.Println("delete:", temp)
+	}
+
+	return "model deleted", nil
 }
