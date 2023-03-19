@@ -1,7 +1,6 @@
 package route
 
 import (
-	"fmt"
 	"riverboat/model"
 	"riverboat/util"
 
@@ -12,8 +11,12 @@ import (
 The methods ExecuteRead and ExecuteWrite have replaced ReadTransaction and WriteTransaction, which are deprecated in version 5.x and will be removed in version 6.0.
 */
 
+func (env Env) getStatus() error {
+	return env.Driver.VerifyConnectivity()
+}
+
 func (env Env) getSpace(suuid string) (model.Space, error) {
-	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
 	records, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
@@ -50,7 +53,7 @@ func (env Env) getSpace(suuid string) (model.Space, error) {
 
 // returns array of players
 func (env Env) listJoined(cuuid string) ([]model.Player, error) {
-	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
 	people, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
@@ -94,7 +97,7 @@ func (env Env) listJoined(cuuid string) ([]model.Player, error) {
 }
 
 func (env Env) listModels(suuid string) (map[string]model.WinByMethod, error) {
-	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
 	people, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
@@ -143,7 +146,7 @@ func (env Env) listModels(suuid string) (map[string]model.WinByMethod, error) {
 }
 
 func (env Env) listPayouts(suuid string) (map[string]model.WinByMethod, error) {
-	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close()
 
 	payouts, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
@@ -195,7 +198,7 @@ func (env Env) submitModel(puuid string, suuid string, json model.WinByMethod) (
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
-	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(`
 			MATCH (player:Player {uuid: $puuid})-->(circle)-->(space:Space {uuid: $suuid})
 			WITH player, space
@@ -228,13 +231,7 @@ func (env Env) submitModel(puuid string, suuid string, json model.WinByMethod) (
 		panic(err)
 	}
 
-	// gives use for records
-	for _, record := range records.([]*neo4j.Record) {
-		temp := record.Values[0].(neo4j.Node)
-		fmt.Println("submit:", temp)
-	}
-
-	return "model submitted", nil
+	return "Model submitted.", nil
 }
 
 func (env Env) postPayouts(
@@ -254,7 +251,7 @@ func (env Env) postPayouts(
 			pomap[val] = float
 		}
 
-		records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 			result, err := tx.Run(query, pomap)
 
 			if err != nil {
@@ -267,18 +264,16 @@ func (env Env) postPayouts(
 		if err != nil {
 			panic(err)
 		}
-
-		fmt.Println(records)
 	}
 
-	return "payouts posted", nil
+	return "Payouts posted.", nil
 }
 
 func (env Env) addRandom(cuuid string) (string, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
-	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(`
 			MATCH (c:Circle {uuid: $cuuid}) WITH c
 			MATCH (p:Player) WHERE NOT (p)-[:JOINED]->(c) 
@@ -298,20 +293,14 @@ func (env Env) addRandom(cuuid string) (string, error) {
 		panic(err)
 	}
 
-	// gives use for records
-	for _, record := range records.([]*neo4j.Record) {
-		temp := record.Values[0].(neo4j.Node)
-		fmt.Println("random:", temp)
-	}
-
-	return "random added", nil
+	return "Player joined Circle.", nil
 }
 
 func (env Env) join(puuid string, cuuid string) (string, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
-	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(`
 			MATCH (p:Player {uuid: $puuid})
 			WITH p MATCH (c:Circle {uuid: $cuuid})
@@ -330,20 +319,14 @@ func (env Env) join(puuid string, cuuid string) (string, error) {
 		panic(err)
 	}
 
-	// gives use for records
-	for _, record := range records.([]*neo4j.Record) {
-		temp := record.Values[0].(neo4j.Node)
-		fmt.Println("join", temp)
-	}
-
-	return "joined", nil
+	return "Player joined Circle.", nil
 }
 
 func (env Env) leave(puuid string, cuuid string) (string, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
-	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(`
 			MATCH (p:Player {uuid: $puuid})-[r:JOINED]->(c:Circle {uuid: $cuuid})
 			DELETE r
@@ -360,20 +343,14 @@ func (env Env) leave(puuid string, cuuid string) (string, error) {
 		panic(err)
 	}
 
-	// gives use for records
-	for _, record := range records.([]*neo4j.Record) {
-		temp := record.Values[0].(neo4j.Node)
-		fmt.Println("leave", temp)
-	}
-
-	return "left", nil
+	return "Player left Circle.", nil
 }
 
 func (env Env) deleteModel(puuid string, suuid string) (string, error) {
 	session := env.Driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
 
-	records, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+	_, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(`
 			MATCH (p:Player {uuid: $puuid})--(n)--(s:Space {uuid: $suuid})
 			WHERE n:Model OR n:Payout
@@ -391,45 +368,5 @@ func (env Env) deleteModel(puuid string, suuid string) (string, error) {
 		panic(err)
 	}
 
-	// gives use for records
-	for _, record := range records.([]*neo4j.Record) {
-		temp := record.Values[0].(neo4j.Node)
-		fmt.Println("delete:", temp)
-	}
-
-	return "model deleted", nil
+	return "Model deleted.", nil
 }
-
-/*
-func addPersonsAsEmployees(ctx context.Context, driver neo4j.DriverWithContext, companyName string) (int, error) {
-	session := driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-
-	results, err := session.Run(ctx, "MATCH (a:Person) RETURN a.name AS name", nil)
-	persons, err := neo4j.CollectWithContext(ctx, results, err)
-	if err != nil {
-		return 0, err
-	}
-
-	employees := 0
-	for _, person := range persons {
-		_, err = session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-			var result, err = tx.Run(ctx, "MATCH (emp:Person {name: $person_name}) "+
-				"MERGE (com:Company {name: $company_name}) "+
-				"MERGE (emp)-[:WORKS_FOR]->(com)", map[string]any{"person_name": person.Values[0], "company_name": companyName})
-			if err != nil {
-				return nil, err
-			}
-
-			return result.Consume(ctx)
-		})
-		if err != nil {
-			return 0, err
-		}
-
-		employees++
-	}
-
-	return employees, nil
-}
-*/

@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	fmt.Println("goyave server activated")
+	fmt.Println("Goyave server active")
 	godotenv.Load(".env")
 
 	var uri, user, pw string
@@ -31,7 +31,7 @@ func main() {
 	}
 
 	dbUri, found := os.LookupEnv(uri)
-	fmt.Println(dbUri)
+	//fmt.Println(dbUri)
 	if !found {
 		panic("DB_URI not set")
 	}
@@ -90,18 +90,18 @@ func main() {
 		}
 	)
 
-	fmt.Println("env:", dbUri, dbUser, dbPass)
+	// fmt.Println("env:", dbUri, dbUser, dbPass)
 
 	// start registration route
 	if err := goyave.Start(func(router *goyave.Router) {
 		router.CORS(cors.Default())
-		router.Get("/", route.Test)
+		router.Get("/", handler.Test)
 		router.Get("/joined/{cuuid}", handler.ListJoined)
 		router.Get("/models/{suuid}", handler.ListModels)
 		router.Get("/space/{suuid}", handler.GetSpace)
 		router.Get("/payouts/{suuid}", handler.ListPayouts)
 		router.Post("/greeting", handler.Greeting)
-		router.Post("/join", handler.Join)
+		router.Post("/join", handler.Join).Validate(PlayerCircle)
 		router.Post("/leave", handler.Leave).Validate(PlayerCircle)
 		router.Post("/add_random", handler.AddRandom).Validate(Circle)
 		router.Post("/submit", handler.SubmitModel).Validate(Submission)

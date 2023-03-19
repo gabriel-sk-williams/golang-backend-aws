@@ -32,7 +32,29 @@ type Controls interface {
 	leave(puuid string, cuuid string) (string, error)
 	mapModels(suuid string) (map[string]map[string]interface{}, error)
 	postPayouts(suuid string, query string, payouts map[string]map[string]float64) (string, error)
+	getStatus() error
 }
+
+//
+// Initialization & Connection Functions
+//
+
+func (h Handler) Test(response *goyave.Response, r *goyave.Request) {
+	err := h.DB.getStatus()
+	if err == nil {
+		response.String(http.StatusOK, "online")
+	} else {
+		response.String(http.StatusOK, "offline")
+	}
+}
+
+func (h Handler) Greeting(response *goyave.Response, r *goyave.Request) {
+	response.String(http.StatusOK, "Welcome!")
+}
+
+//
+// GET Functions
+//
 
 func (h Handler) GetSpace(response *goyave.Response, r *goyave.Request) {
 	space, err := h.DB.getSpace(r.Params["suuid"])
@@ -62,14 +84,19 @@ func (h Handler) ListPayouts(response *goyave.Response, r *goyave.Request) {
 	}
 }
 
+//
+// POST Functions
+//
+
+// receives Space
 func (h Handler) CalculatePayouts(response *goyave.Response, r *goyave.Request) {
 	fields := r.Data["fields"].([]string)
 	pattern := r.String("pattern")
 	stake := r.Numeric("stake")
 	suuid := r.String("uuid")
 
-	fmt.Println(pattern) // use pattern to match
-	query := util.PostWBM
+	fmt.Println("calculating:", pattern)
+	query := util.PostWBM // use pattern to match query
 
 	models, _ := h.DB.mapModels(suuid)
 	payouts, _ := calc.Payouts(models, fields, stake)
@@ -77,6 +104,8 @@ func (h Handler) CalculatePayouts(response *goyave.Response, r *goyave.Request) 
 
 	if err == nil {
 		response.String(http.StatusOK, result)
+	} else {
+		response.String(http.StatusBadRequest, "Error: Could not calculate payouts.") // 400
 	}
 }
 
@@ -94,15 +123,16 @@ func (h Handler) SubmitModel(response *goyave.Response, r *goyave.Request) {
 		DrawNC: spread["draw_nc"].(float64),
 	}
 
-	text, err := h.DB.submitModel(puuid, suuid, *model)
+	res, err := h.DB.submitModel(puuid, suuid, *model)
 
 	if err == nil {
-		response.String(http.StatusOK, text)
+		response.String(http.StatusOK, res)
 	} else {
-		fmt.Println(err)
+		response.String(http.StatusBadRequest, "Error: Bad submission.") // 400
 	}
 }
 
+// receives PlayerCircle
 func (h Handler) Join(response *goyave.Response, r *goyave.Request) {
 	puuid := r.String("puuid")
 	cuuid := r.String("cuuid")
@@ -112,7 +142,7 @@ func (h Handler) Join(response *goyave.Response, r *goyave.Request) {
 	if err == nil {
 		response.String(http.StatusOK, res)
 	} else {
-		fmt.Println(err)
+		response.String(http.StatusBadRequest, "Error: Could not join Circle.") // 400
 	}
 }
 
@@ -126,7 +156,7 @@ func (h Handler) Leave(response *goyave.Response, r *goyave.Request) {
 	if err == nil {
 		response.String(http.StatusOK, res)
 	} else {
-		fmt.Println(err)
+		response.String(http.StatusBadRequest, "Error: Could not leave Circle.") // 400
 	}
 }
 
@@ -135,11 +165,11 @@ func (h Handler) AddRandom(response *goyave.Response, r *goyave.Request) {
 	cuuid := r.String("cuuid")
 
 	res, err := h.DB.addRandom(cuuid)
-	fmt.Println("adding random", cuuid)
+
 	if err == nil {
 		response.String(http.StatusOK, res)
 	} else {
-		fmt.Println(err)
+		response.String(http.StatusBadRequest, "Error: Could not join Circle.") // 400
 	}
 }
 
@@ -153,15 +183,6 @@ func (h Handler) DeleteModel(response *goyave.Response, r *goyave.Request) {
 	if err == nil {
 		response.String(http.StatusOK, res)
 	} else {
-		fmt.Println(err)
+		response.String(http.StatusBadRequest, "Error: Could not join delete Model") // 400
 	}
-
-}
-
-func Test(response *goyave.Response, r *goyave.Request) {
-	response.String(http.StatusOK, "d e e p   n u m b e r s")
-}
-
-func (h Handler) Greeting(response *goyave.Response, r *goyave.Request) {
-	response.String(http.StatusOK, "Welcome!")
 }

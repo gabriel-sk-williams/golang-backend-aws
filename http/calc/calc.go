@@ -1,7 +1,6 @@
 package calc
 
 import (
-	"fmt"
 	"math"
 	"sort"
 )
@@ -99,25 +98,21 @@ func payoutMap(oca []Pair, stake float64) map[string][]float64 {
 		return sum
 	}
 
-	// get the number of consecutive identical certainties at beginning of sorted group
 	var getConsecutive = func(data []Pair) int {
 
-		if len(data) == 1 {
-			return 1
-		}
-
-		x := data[0]
+		alpha := data[0]
 		var consecutive int
+
 		for index, value := range data {
-			if value.Cert == x.Cert {
+			if value.Cert == alpha.Cert {
+				consecutive = index
 				continue
 			} else {
-				consecutive = index
 				break
 			}
 		}
 
-		return consecutive
+		return consecutive + 1
 	}
 
 	pomap := blankMap(oca)
@@ -126,7 +121,6 @@ func payoutMap(oca []Pair, stake float64) map[string][]float64 {
 		consecutive := getConsecutive(oca)
 		trust := oca[0:consecutive] // copy consecutive elements
 		oca = oca[consecutive:]     // remove consecutive
-		fmt.Println(trust, oca)
 		if len(oca) == 0 {
 			break
 		}
@@ -183,49 +177,3 @@ func sumPayouts(slice []float64) float64 {
 	}
 	return sum
 }
-
-/*
-// access vec name: [payouts, ...] and sum all values to get final payout
-fn aggregate(outcome: String,
-	name: String,
-	oculus: HashMap<String, HashMap<String, Vec<f64>>>)
-	-> f64 {
-
-let ocmap = oculus.get(&outcome).expect("");
-let payvec = ocmap.get(&name).expect("");
-
-// round all values, sum, and round again for consistency
-let rounded: Vec<f64> = payvec.iter().map(|f| (f*100.0_f64).round() / 100.0_f64 ).collect();
-let collapsed: f64 = rounded.iter().sum();
-let final_round: f64 = (collapsed*100.0_f64).round() / 100.0_f64;
-
-return final_round
-}
-*/
-
-/*
-while oc_vec.len() > 0 {
-	let consecutive = get_consecutive(oc_vec.clone());
-
-	let trust: Vec<(String, f64)> = match consecutive {
-		Some(consecutive) => oc_vec.drain(0..consecutive+1).collect(),
-		None => break
-	};
-
-	for (current_name, current_cert) in trust {
-		let raw_loss: f64 = raw_loss(current_cert.clone(), stake);
-		let mod_loss: f64 = mod_loss(oc_vec.clone());
-		let paid_loss: f64 = raw_loss * mod_loss;
-		pomap.get_mut(&current_name).expect("").push(paid_loss);
-
-		let payout: f64 = paid_loss.abs();
-		let mount: f64 = sum_certs(oc_vec.clone());
-
-		for (next_name, next_cert) in oc_vec.iter() {
-			let mass: f64 = next_cert.clone() as f64 / mount;
-			let portion: f64 = payout * mass;
-			pomap.get_mut(next_name).expect("").push(portion);
-		}
-	}
-}
-*/
