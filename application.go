@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 	"riverboat/http/route"
+	"riverboat/model"
 
 	"github.com/joho/godotenv"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"goyave.dev/goyave/v4"
 	"goyave.dev/goyave/v4/cors"
-	"goyave.dev/goyave/v4/validation"
 )
 
 func main() {
@@ -52,46 +52,6 @@ func main() {
 		DB: &neoDriver,
 	}
 
-	// SubmitModel()
-	var (
-		Submission = validation.RuleSet{
-			"puuid": validation.List{"required", "string"},
-			"suuid": validation.List{"required", "string"},
-			"model": validation.List{"required", "object"},
-		}
-	)
-
-	var (
-		PlayerCircle = validation.RuleSet{
-			"puuid": validation.List{"required", "string"},
-			"cuuid": validation.List{"required", "string"},
-		}
-	)
-
-	var (
-		PlayerSpace = validation.RuleSet{
-			"puuid": validation.List{"required", "string"},
-			"suuid": validation.List{"required", "string"},
-		}
-	)
-
-	var (
-		Circle = validation.RuleSet{
-			"cuuid": validation.List{"required", "string"},
-		}
-	)
-
-	var (
-		Space = validation.RuleSet{
-			"uuid":    validation.List{"required", "string"},
-			"fields":  validation.List{"required", "array:string"},
-			"pattern": validation.List{"required", "string"},
-			"stake":   validation.List{"required", "numeric"},
-		}
-	)
-
-	// fmt.Println("env:", dbUri, dbUser, dbPass)
-
 	// start registration route
 	if err := goyave.Start(func(router *goyave.Router) {
 		router.CORS(cors.Default())
@@ -101,12 +61,12 @@ func main() {
 		router.Get("/space/{suuid}", handler.GetSpace)
 		router.Get("/payouts/{suuid}", handler.ListPayouts)
 		router.Post("/greeting", handler.Greeting)
-		router.Post("/join", handler.Join).Validate(PlayerCircle)
-		router.Post("/leave", handler.Leave).Validate(PlayerCircle)
-		router.Post("/add_random", handler.AddRandom).Validate(Circle)
-		router.Post("/submit", handler.SubmitModel).Validate(Submission)
-		router.Post("/delete_model", handler.DeleteModel).Validate(PlayerSpace)
-		router.Post("/calc", handler.CalculatePayouts).Validate(Space)
+		router.Post("/join", handler.Join).Validate(model.PlayerCircleProps)
+		router.Post("/leave", handler.Leave).Validate(model.PlayerCircleProps)
+		router.Post("/add_random", handler.AddRandom).Validate(model.CircleProps)
+		router.Post("/submit", handler.SubmitModel).Validate(model.SubmissionProps)
+		router.Post("/delete_model", handler.DeleteModel).Validate(model.PlayerSpaceProps)
+		router.Post("/calc", handler.CalculatePayouts).Validate(model.SpaceProps)
 
 	}); err != nil {
 		os.Exit(err.(*goyave.Error).ExitCode)
