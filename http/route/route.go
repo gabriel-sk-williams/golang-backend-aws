@@ -39,7 +39,7 @@ type Controls interface {
 // Initialization & Connection Functions
 //
 
-func (h Handler) Test(response *goyave.Response, r *goyave.Request) {
+func (h Handler) GetStatus(response *goyave.Response, r *goyave.Request) {
 	err := h.DB.getStatus()
 	if err == nil {
 		response.String(http.StatusOK, "online")

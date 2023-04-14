@@ -55,7 +55,7 @@ func main() {
 	// start registration route
 	if err := goyave.Start(func(router *goyave.Router) {
 		router.CORS(cors.Default())
-		router.Get("/", handler.Test)
+		router.Get("/", handler.GetStatus)
 		router.Get("/joined/{cuuid}", handler.ListJoined)
 		router.Get("/models/{suuid}", handler.ListModels)
 		router.Get("/space/{suuid}", handler.GetSpace)
