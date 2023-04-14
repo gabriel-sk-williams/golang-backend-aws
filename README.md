@@ -6,24 +6,24 @@
 
 ``` go
 // start registration route
-	if err := goyave.Start(func(router *goyave.Router) {
-		router.CORS(cors.Default())
-		router.Get("/", handler.Test)
-		router.Get("/joined/{cuuid}", handler.ListJoined)
-		router.Get("/models/{suuid}", handler.ListModels)
-		router.Get("/space/{suuid}", handler.GetSpace)
-		router.Get("/payouts/{suuid}", handler.ListPayouts)
-		router.Post("/greeting", handler.Greeting)
-		router.Post("/join", handler.Join).Validate(PlayerCircle)
-		router.Post("/leave", handler.Leave).Validate(PlayerCircle)
-		router.Post("/add_random", handler.AddRandom).Validate(Circle)
-		router.Post("/submit", handler.SubmitModel).Validate(Submission)
-		router.Post("/delete_model", handler.DeleteModel).Validate(PlayerSpace)
-		router.Post("/calc", handler.CalculatePayouts).Validate(Space)
+if err := goyave.Start(func(router *goyave.Router) {
+	router.CORS(cors.Default())
+	router.Get("/", handler.Test)
+	router.Get("/joined/{cuuid}", handler.ListJoined)
+	router.Get("/models/{suuid}", handler.ListModels)
+	router.Get("/space/{suuid}", handler.GetSpace)
+	router.Get("/payouts/{suuid}", handler.ListPayouts)
+	router.Post("/greeting", handler.Greeting)
+	router.Post("/join", handler.Join).Validate(PlayerCircle)
+	router.Post("/leave", handler.Leave).Validate(PlayerCircle)
+	router.Post("/add_random", handler.AddRandom).Validate(Circle)
+	router.Post("/submit", handler.SubmitModel).Validate(Submission)
+	router.Post("/delete_model", handler.DeleteModel).Validate(PlayerSpace)
+	router.Post("/calc", handler.CalculatePayouts).Validate(Space)
 
-	}); err != nil {
-		os.Exit(err.(*goyave.Error).ExitCode)
-	}
+}); err != nil {
+	os.Exit(err.(*goyave.Error).ExitCode)
+}
 ```
 
 #### Handles "payout" calculations whenever users edit or randomize their certainty for a given spread of outcomes
