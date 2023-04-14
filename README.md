@@ -8,7 +8,7 @@
 // start registration route
 if err := goyave.Start(func(router *goyave.Router) {
 	router.CORS(cors.Default())
-	router.Get("/", handler.Test)
+	router.Get("/", handler.GetStatus)
 	router.Get("/joined/{cuuid}", handler.ListJoined)
 	router.Get("/models/{suuid}", handler.ListModels)
 	router.Get("/space/{suuid}", handler.GetSpace)
@@ -35,8 +35,7 @@ func (h Handler) CalculatePayouts(response *goyave.Response, r *goyave.Request) 
 	stake := r.Numeric("stake")
 	suuid := r.String("uuid")
 
-	fmt.Println("calculating:", pattern)
-	query := util.PostWBM // use pattern to match query
+	query := util.getQuery(pattern) // use pattern to match query
 
 	models, _ := h.DB.mapModels(suuid)
 	payouts, _ := calc.Payouts(models, fields, stake)
