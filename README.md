@@ -1,6 +1,6 @@
 ## Production Golang backend for AWS Elastic Beanstalk
 
-- Uses [Goyave](https://goyave.dev/guide/installation.html) and the [offical Neo4j Go Driver](https://github.com/neo4j/neo4j-go-driver) to handle calls from [riverboat.zone](https://riverboat.zone) to Neo4j Aura.
+- REST API using [Goyave](https://goyave.dev/guide/installation.html) web framework with the [offical Neo4j Go Driver](https://github.com/neo4j/neo4j-go-driver) to handle calls from [riverboat.zone](https://riverboat.zone) to Neo4j Aura.
  
 - Handles typical users actions: login, joining and leaving spaces on the website:
 
