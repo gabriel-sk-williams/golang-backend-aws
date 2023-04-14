@@ -2,7 +2,7 @@
 
 - Uses [Goyave](https://goyave.dev/guide/installation.html) and the [offical Neo4j Go Driver](https://github.com/neo4j/neo4j-go-driver) to handle calls from [riverboat.zone](https://riverboat.zone) to Neo4j Aura.
  
-- Handles typical users actions: login, joining and leaving spaces on the website
+- Handles typical users actions: login, joining and leaving spaces on the website:
 
 ``` go
 // start registration route
@@ -26,7 +26,7 @@ if err := goyave.Start(func(router *goyave.Router) {
 }
 ```
 
-- Handles "payout" calculations whenever users edit or randomize their certainty for a given spread of outcomes
+- Handles "payout" calculations whenever users edit or randomize their certainty for a given spread of outcomes:
 ``` go
 // receives Space
 func (h Handler) CalculatePayouts(response *goyave.Response, r *goyave.Request) {
