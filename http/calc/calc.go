@@ -17,7 +17,7 @@ type Pair struct {
 // receives hashmap of prediction models -> name: { outcome: certainty, ... }
 // returns hashmap of payouts -> name: { outcome: payout, ... }
 func Payouts(
-	models map[string]map[string]interface{},
+	models map[string]map[string]float64,
 	fields []string,
 	stake float64) (map[string]map[string]float64, error) {
 
@@ -45,11 +45,11 @@ func Payouts(
 
 // generate a vec of tuples -> outcome: [ (name, certainty)... ]
 // representing each person's prediction of each possible outcome
-func outcomeArray(models map[string]map[string]interface{}, field string) []Pair {
+func outcomeArray(models map[string]map[string]float64, field string) []Pair {
 
 	var oca []Pair
 	for name, model := range models {
-		pair := Pair{name, model[field].(float64)}
+		pair := Pair{name, model[field]}
 		oca = append(oca, pair)
 	}
 
@@ -150,14 +150,9 @@ func aggregate(field string, name string, oculus map[string]map[string][]float64
 
 	ocmap := oculus[field]
 	paySlice := ocmap[name]
-
-	// round all values, sum, and round again for consistency
-	// rounded := roundAll(paySlice)
-	// let rounded: Vec<f64> = payvec.iter().map(|f| (f*100.0_f64).round() / 100.0_f64 ).collect();
 	collapsed := sumPayouts(paySlice)
-	//let final_round: f64 = (collapsed*100.0_f64).round() / 100.0_f64;
 
-	return collapsed //finalRound
+	return collapsed
 }
 
 func roundAll(slice []float64) []float64 {

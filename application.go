@@ -56,6 +56,8 @@ func main() {
 	if err := goyave.Start(func(router *goyave.Router) {
 		router.CORS(cors.Default())
 		router.Get("/", handler.GetStatus)
+		router.Get("/circles", handler.ListCircles)       // public circles
+		router.Get("/spaces/{cuuid}", handler.ListSpaces) // spawned by circle
 		router.Get("/joined/{cuuid}", handler.ListJoined)
 		router.Get("/models/{suuid}", handler.ListModels)
 		router.Get("/space/{suuid}", handler.GetSpace)

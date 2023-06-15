@@ -2,15 +2,6 @@ package util
 
 //import "goyave.dev/goyave/v4/validation"
 
-func AssertArray(list []interface{}) []string {
-
-	array := make([]string, len(list))
-	for i, v := range list {
-		array[i] = v.(string)
-	}
-	return array
-}
-
 /*
 func MakeMap(model any) {
 	fmt.Println("making map")
@@ -26,6 +17,7 @@ func MakeMap(model any) {
 	}
 }
 */
+
 /*
 func init() {
 	validation.AddRule("password", &validation.RuleDefinition{
